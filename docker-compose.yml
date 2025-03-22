@@ -1,0 +1,66 @@
+services:
+  n8n:
+    container_name: n8n
+    image: n8nio/n8n
+    ports:
+      - "5678:5678"
+    env_file:
+      - ./env/.n8n
+    volumes:
+      - ./data/n8n-app:/home/node/.n8n
+      - ./tmp/shared:/tmp/shared
+
+    networks:
+      - n8n-net
+    restart: always
+  
+  n8n-db:
+    container_name: n8n-db
+    env_file:
+      - ./env/.n8n
+    image: postgres:16-alpine
+    restart: always
+    volumes:
+    - ./data/n8n-db:/var/lib/postgresql/data
+    networks:
+      - n8n-net
+
+  cloudflare-tunnel:
+    image: cloudflare/cloudflared:latest              # Pull the latest version of the Cloudflare Tunnel image
+    container_name: cloudflare-tunnel                 # Name of the Cloudflare Tunnel container
+    hostname: cloudflare-tunnel                       # Hostname for the Cloudflare Tunnel container
+    restart: unless-stopped                           # Restart the container unless manually stopped
+
+    # Logging configuration for Cloudflare Tunnel container
+    logging:
+      driver: "json-file"                             # Use the default json-file logging driver
+      options:
+        max-size: "100m"                              # Maximum log file size before rotation (100 MB)
+        max-file: "10"                                # Maximum number of log files to retain (10)
+    # Command to run Cloudflare Tunnel
+    command: tunnel run                               # Command to start the Cloudflare tunnel
+
+    env_file:
+      - ./env/.cloudflared
+    # Health check configuration to verify Cloudflare Tunnel readiness
+    healthcheck:
+      test: ["CMD", "cloudflared", "--version"]       # Check if cloudflared version command works
+      interval: 30s                                   # Time between health check attempts
+      timeout: 10s                                    # Time to wait for a response
+      retries: 3                                      # Number of retries before marking as unhealthy
+      start_period: 10s                               # Delay before health checks begin
+
+    # Container labels for additional metadata
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"  # Enable automatic updates with Watchtower
+    networks:
+      - n8n-net
+
+    # Volume configuration for time synchronization and hosts file persistence
+    volumes:
+      - /etc/localtime:/etc/localtime:ro              # Synchronize time with the host
+  
+networks:
+  n8n-net:
+    name: n8n-net
+    driver: bridge

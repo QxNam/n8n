@@ -1,0 +1,5 @@
+env/.n8n
+env/.cloudflared
+
+data
+tmp
