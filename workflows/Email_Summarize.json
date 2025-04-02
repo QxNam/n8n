@@ -1,0 +1,246 @@
+{
+  "name": "Email Summarize",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "filters": {}
+      },
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ],
+      "id": "a945abe3-62ce-44f0-8c22-2b4c7c9e88ea",
+      "name": "Gmail Trigger",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "PVmm7gVF7tCKEXn1",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "d84c3ba9-39f1-4e57-a6f8-18a267f8c688",
+              "name": "Email Context",
+              "value": "=Sender Email Address: {{ $json.From }}\nEmail Time: {{ $json.internalDate.toDateTime('ms').format('yyyy-MM-dd HH:MM:ss') }}\n\nEmail Subject:\n{{ $json.Subject }}\n\nEmail Body:\n{{ $json.snippet }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        220,
+        0
+      ],
+      "id": "3087d974-2d8f-46b5-8bfd-a460e20ab27e",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Your role is to determine if the email is related to a Data Engineer/AI Engineer/Data Science/Python results notification\n\nReply with a JSON object with the following fields:\n- Status: which can be either true or false.\n- Reasoning: explain your answer.\n- Summary: summarize the main issue addressed.\n\nExpected json format:\n```json\n{\n  \"Status\": true/false,\n  \"Reasoning\": \"text\",\n  \"Summary\": \"text\"\n}\n```\n\nThink carefully about your answer. Answer translated into Vietnamese\n\n {{ $json[\"Email Context\"] }}",
+        "hasOutputParser": true,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [
+        440,
+        -40
+      ],
+      "id": "7631c9a9-b785-412a-8135-7dde67c3948f",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": "llama-3.3-70b-versatile",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        400,
+        220
+      ],
+      "id": "f3df2186-b1b8-433a-bcc5-eea774fe5c89",
+      "name": "Groq Chat Model",
+      "credentials": {
+        "groqApi": {
+          "id": "coQo4WXI8N1YYxyH",
+          "name": "Groq account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "schemaType": "manual",
+        "inputSchema": "{\n\t\"type\": \"object\",\n\t\"properties\": {\n\t\t\"Status\": {\n\t\t\t\"type\": \"boolean\"\n\t\t},\n        \"Reasoning\": {\n\t\t\t\"type\": \"string\"\n\t\t},\n        \"Summary\": {\n\t\t\t\"type\": \"string\"\n\t\t}\n\t}\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.2,
+      "position": [
+        680,
+        240
+      ],
+      "id": "01771a92-67dc-4a19-bbff-6f9d72c131bb",
+      "name": "Structured Output Parser"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "1441aba9-feb1-4f4b-88b4-38ae2ad7f091",
+              "leftValue": "={{ $json.output.Status }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        800,
+        -40
+      ],
+      "id": "05232bff-2405-4f1e-b9f6-506ffa0a6c6c",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "chatId": "6180091332",
+        "text": "={{ $('Edit Fields').item.json['Email Context'] }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1100,
+        -140
+      ],
+      "id": "7afb4d91-e2d0-46e3-8a0e-765efb72616f",
+      "name": "Telegram",
+      "webhookId": "e203ab11-755c-48b8-9141-266b1869e4a6",
+      "credentials": {
+        "telegramApi": {
+          "id": "MeAaWGFisSzADwJr",
+          "name": "Telegram account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Gmail Trigger": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Telegram",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Telegram": {
+      "main": [
+        []
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "85cba544-bde4-41a6-86da-5be3d42eb808",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "85a699e107ee2d01c021f1466c431c81b7b1be1aa546a482330b500120c61aeb"
+  },
+  "id": "SiTzoykk8oBLhcim",
+  "tags": []
+}

@@ -3,3 +3,5 @@ env/.cloudflared
 
 data
 tmp
+backup
+*.sql

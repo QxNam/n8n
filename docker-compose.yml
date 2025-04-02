@@ -2,6 +2,7 @@ services:
   n8n:
     container_name: n8n
     image: n8nio/n8n
+    user: "1000:1000"
     ports:
       - "5678:5678"
     env_file:
